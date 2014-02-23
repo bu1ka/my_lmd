@@ -1,0 +1,62 @@
+{
+    "name": "main build",
+    "root": "../",
+    "output": "./i/js/dist/main.lmd.js",
+    "modules": {
+        "lodash": {
+            "path": "./i/js/vendors/lodash/dist/lodash.js",
+            "exports": "_"
+        },
+        "underscore": {
+            "path": "./i/js/vendors/lodash/dist/lodash.underscore.js",
+            "exports": "_"
+        },
+        "jquery": {
+            "path": "./i/js/vendors/jquery/jquery.js",
+            "exports": "$"
+        },
+        "Backbone" : {
+            "path" : "./i/js/vendors/backbone/backbone.js",
+            "require": {
+                "_": "lodash",
+                "$": "jquery"
+            },
+
+            "exports": "Backbone"
+        },
+        "RedditModel": {
+            "path": "./i/app/js/Models/RedditModel.js",
+            "exports": "RedditModel",
+            "require": {
+                "Backbone": "Backbone"
+            }
+        },
+        "RedditView" : {
+            "path": "./i/app/js/Views/RedditView.js",
+            "exports": "RedditView",
+            "require": {
+                "Backbone": "Backbone",
+                "RedditModel": "RedditModel"
+            },
+            "template": "./i/app/templates/reddit.html"
+        },
+        "RedditsView" : {
+            "path": "./i/app/js/Views/RedditsView.js",
+            "exports": "RedditsView",
+            "require": {
+                "Backbone": "Backbone",
+                "RedditView": "RedditView"
+            }
+        },
+        "RedditsCollection": {
+            "path": "./i/app/js/Collections/RedditsCollection.js",
+            "exports": "RedditsCollection",
+            "require": {
+                "Backbone": "Backbone",
+                "RedditModel": "RedditModel"
+            }
+        },
+        "main": "./i/app/js/app.js"
+    },
+    "main": "main"
+}
