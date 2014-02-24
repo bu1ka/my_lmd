@@ -15,8 +15,8 @@
             "path": "./i/js/vendors/jquery/jquery.js",
             "exports": "$"
         },
-        "Backbone" : {
-            "path" : "./i/js/vendors/backbone/backbone.js",
+        "Backbone": {
+            "path": "./i/js/vendors/backbone/backbone.js",
             "require": {
                 "_": "lodash",
                 "$": "jquery"
@@ -25,14 +25,15 @@
             "exports": "Backbone"
         },
 
-        "RedditModel": "./i/app/js/Models/RedditModel.js",
-        "RedditView" : "./i/app/js/Views/RedditView.js",
-        "RedditTemplate": "./i/app/templates/reddit.html",
-        "RedditsView": "./i/app/js/Views/RedditsView.js",
-        "RedditsCollection": "./i/app/js/Collections/RedditsCollection.js",
-        "main": "./i/app/js/app.js"
+        "bundle-Reddits": "Reddits",
+
+        "all7": "./i/all7/js/all7.js"
     },
-    "main": "main",
+    "bundles": {
+        "Reddits": "../i/all7/js/Modules/reddits/reddits.lmd.json"
+    },
+
+    "main": "all7",
 
     "log": true,
     "warn": true

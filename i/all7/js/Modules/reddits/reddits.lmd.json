@@ -1,0 +1,12 @@
+{
+    "root": "../../",
+    "modules": {
+        "RedditModel": "Models/RedditModel.js",
+        "RedditView": "Views/RedditView.js",
+        "RedditTemplate": "../templates/reddit.html",
+        "RedditsView": "Views/RedditsView.js",
+        "RedditsCollection": "Collections/RedditsCollection.js",
+        "main": "Modules/reddits/reddits.js"
+    },
+    "main": "main"
+}

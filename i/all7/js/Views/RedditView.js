@@ -4,6 +4,7 @@ var redditTemplate = require('RedditTemplate');
 
 var RedditView = Backbone.View.extend({
     tagName: 'li',
+    className: 'subreddit-item',
     template: _.template(redditTemplate),
     initialize: function() {
         this.render();

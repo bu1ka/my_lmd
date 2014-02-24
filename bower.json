@@ -5,7 +5,7 @@
     "Solomentsev Alexey <bu1ka@inbox.ru>"
   ],
   "description": "testing lmd",
-  "main": "app.js",
+  "main": "reddits.js",
   "license": "MIT",
   "private": true,
   "ignore": [

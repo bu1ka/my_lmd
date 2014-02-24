@@ -4,7 +4,7 @@
         global_eval = function (code) {
             return global.Function('return ' + code)();
         },
-        
+        global_noop = function () {},
         global_document = global.document,
         local_undefined,
         /**
@@ -128,7 +128,7 @@
             'require': lmd_require,
             'initialized': initialized_modules,
 
-            
+            'noop': global_noop,
             'document': global_document,
             
             
@@ -243,22 +243,287 @@ sb.on('*:request-indexof', function (arrayIndexOf) {
 
 }(sandbox));
 
+/**
+ * Internal module
+ */
+
+/**
+ * @name sandbox
+ */
+(function (sb) {
+    /**
+     * Loads any JavaScript file a non-LMD module
+     *
+     * @param {String|Array} moduleName path to file
+     * @param {Function}     [callback]   callback(result) undefined on error HTMLScriptElement on success
+     */
+    sb.on('*:load-script', function (moduleName, callback) {
+        var readyState = 'readyState',
+            isNotLoaded = 1,
+            head;
+
+        var script = sb.document.createElement("script");
+        sb.global.setTimeout(script.onreadystatechange = script.onload = function (e) {
+            e = e || sb.global.event;
+            if (isNotLoaded &&
+                (!e ||
+                !script[readyState] ||
+                script[readyState] == "loaded" ||
+                script[readyState] == "complete")) {
+
+                isNotLoaded = 0;
+                // register or cleanup
+                if (!e) {
+                    sb.trigger('*:request-error', moduleName);
+                }
+                callback(e ? sb.register(moduleName, script) : head.removeChild(script) && sb.undefined); // e === undefined if error
+            }
+        }, 3000, 0);
+
+        script.src = moduleName;
+        head = sb.document.getElementsByTagName("head")[0];
+        head.insertBefore(script, head.firstChild);
+
+        return [moduleName, callback];
+    });
+
+}(sandbox));
+
+/**
+ * @name sandbox
+ */
+(function (sb) {
+    var domOnlyLoaders = {
+        'css': true,
+        'image': true
+    };
+
+    var reEvalable = /(java|ecma)script|json/,
+        reJson = /json/;
+
+    /**
+      * Load off-package LMD module
+      *
+      * @param {String|Array} moduleName same origin path to LMD module
+      * @param {Function}     [callback]   callback(result) undefined on error others on success
+      */
+    sb.on('*:preload', function (moduleName, callback, type) {
+        var replacement = sb.trigger('*:request-off-package', moduleName, callback, type), // [[returnResult, moduleName, module, true], callback, type]
+            returnResult = [replacement[0][0], callback, type];
+
+        if (replacement[0][3]) { // isReturnASAP
+            return returnResult;
+        }
+
+        var module = replacement[0][2],
+            XMLHttpRequestConstructor = sb.global.XMLHttpRequest || sb.global.ActiveXObject;
+
+        callback = replacement[1];
+        moduleName = replacement[0][1];
+
+        if (!XMLHttpRequestConstructor) {
+            sb.trigger('preload:require-environment-file', moduleName, module, callback);
+            return returnResult;
+        }
+
+        // Optimized tiny ajax get
+        // @see https://gist.github.com/1625623
+        var xhr = new XMLHttpRequestConstructor("Microsoft.XMLHTTP");
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4) {
+                // 3. Check for correct status 200 or 0 - OK?
+                if (xhr.status < 201) {
+                    var contentType = xhr.getResponseHeader('content-type');
+                    module = xhr.responseText;
+                    if (reEvalable.test(contentType)) {
+                        module = sb.trigger('*:wrap-module', moduleName, module, contentType)[1];
+                        if (!reJson.test(contentType)) {
+                            module = sb.trigger('*:coverage-apply', moduleName, module)[1];
+                        }
+
+                        sb.trigger('preload:before-callback', moduleName, module);
+                        module = sb.eval(module);
+                    } else {
+                        sb.trigger('preload:before-callback', moduleName, module);
+                    }
+
+                    if (type === 'preload') {
+                        // 4. Declare it
+                        sb.modules[moduleName] = module;
+                        // 5. Then callback it
+                        callback(moduleName);
+                    } else {
+                        // 4. Callback it
+                        callback(sb.register(moduleName, module));
+                    }
+                } else {
+                    sb.trigger('*:request-error', moduleName, module);
+                    callback();
+                }
+            }
+        };
+        xhr.open('get', moduleName);
+        xhr.send();
+
+        return returnResult;
+
+    });
+
+    /**
+     * @event *:request-off-package
+     *
+     * @param {String}   moduleName
+     * @param {Function} callback
+     * @param {String}   type
+     *
+     * @retuns yes [asap, returnResult]
+     */
+    sb.on('*:request-off-package', function (moduleName, callback, type) {
+        
+        var returnResult = sb.require;
+        callback = callback || sb.noop;
+
+        if (typeof moduleName !== "string") {
+            callback = sb.trigger('*:request-parallel', moduleName, callback, sb.require[type])[1];
+            if (!callback) {
+                return [[returnResult, moduleName, module, true], callback, type];
+            }
+        }
+
+        var module = sb.modules[moduleName];
+
+        var replacement = sb.trigger('*:rewrite-shortcut', moduleName, module);
+        if (replacement) {
+            moduleName = replacement[0];
+            module = replacement[1];
+        }
+
+        sb.trigger('*:before-check', moduleName, module, type);
+        // If module exists or its a node.js env
+        if (module || (domOnlyLoaders[type] && !sb.document)) {
+            callback(type === "preload" ? moduleName : sb.initialized[moduleName] ? module : sb.require(moduleName));
+            return [[returnResult, moduleName, module, true], callback, type];
+        }
+
+        sb.trigger('*:before-init', moduleName, module);
+
+        callback = sb.trigger('*:request-race', moduleName, callback)[1];
+        // if already called
+        if (!callback) {
+            return [[returnResult, moduleName, module, true], callback, type]
+        }
+
+        return [[returnResult, moduleName, module, false], callback, type];
+    });
+}(sandbox));
+
+/**
+ * Bundle loader
+ *
+ * Flag "bundle"
+ *
+ * This plugin provides require.bundle() function
+ */
+
+/**
+ * @name sandbox
+ */
+(function (sb) {
+    var callbackName = sb.options.bundle,
+        pendingBundlesLength = 0;
+
+    /**
+     * Cases:
+     *     ({main}, {modules}, {options})
+     *     ({modules}, {options})
+     *     ({modules})
+     *
+     * @param {Function} _main
+     * @param {Object}   _modules
+     * @param {Object}   _modules_options
+     */
+    var processBundleJSONP = function (_main, _modules, _modules_options) {
+        if (typeof _main === "object") {
+            _modules_options = _modules;
+            _modules = _main;
+        }
+
+        for (var moduleName in _modules) {
+            // if already initialized - skip
+            if (moduleName in sb.modules) {
+                continue;
+            }
+
+            // declare new modules
+            sb.modules[moduleName] = _modules[moduleName];
+            sb.initialized[moduleName] = 0;
+
+            // declare module options
+            if (_modules_options && moduleName in _modules_options) {
+                sb.modules_options[moduleName] = _modules_options[moduleName];
+            }
+        }
+
+        if (typeof _main === "function") {
+            var output = {'exports': {}};
+            _main(sb.trigger('lmd-register:decorate-require', "<bundle:main>", sb.require)[1], output.exports, output);
+        }
+    };
+
+    var trap = function () {
+        pendingBundlesLength++;
+        // make trap
+        sb.global[callbackName] = processBundleJSONP;
+    };
+
+    var cleanup = function (callback, scriptTag) {
+        // Be sure that callback will be called after script eval
+        setTimeout(function () {
+            pendingBundlesLength--;
+            // cleanup if no pending bundles
+            if (!pendingBundlesLength) {
+                sb.global[callbackName] = sb.undefined;
+            }
+            callback(scriptTag);
+        }, 10);
+    };
+
+    /**
+     * Loads LMD bundle
+     *
+     * @param {String|Array} bundleSrc path to file
+     * @param {Function}     [callback]   callback(result) undefined on error HTMLScriptElement on success
+     */
+    sb.require.bundle = function (bundleSrc, callback) {
+        var replacement = sb.trigger('*:request-off-package', bundleSrc, callback, 'image'), // [[returnResult, bundleSrc, bundle, true], callback, type]
+            returnResult = replacement[0][0];
+
+        if (replacement[0][3]) { // isReturnASAP
+            return returnResult;
+        }
+
+        callback = replacement[1];
+        bundleSrc = replacement[0][1];
+
+        trap();
+
+        sb.trigger('*:load-script', bundleSrc, function (scriptTag) {
+            cleanup(callback, scriptTag);
+        });
+
+        return returnResult;
+    };
+
+}(sandbox));
+
 
 
     main(lmd_trigger('lmd-register:decorate-require', 'main', lmd_require)[1], output.exports, output);
 })/*DO NOT ADD ; !*/
 (this,(function (require, exports, module) { /* wrapped by builder */
-var $ = require('jquery'),
-    Backbone = require('Backbone'),
-    _ = require('lodash'),
-    RedditsCollection = require('RedditsCollection'),
-    App = require('RedditsView');
+var Reddits = require('Reddits');
 
-
-$(function() {
-    new App({ collection: new RedditsCollection() });
-});
-
+console.log("3: Reddits = ", Reddits);
 
 }),{
 "lodash": (function (require) { /* wrapped by builder */
@@ -23133,81 +23398,5 @@ var _ = require("lodash"),
 
 /* added by builder */
 return Backbone;
-}),
-"RedditModel": (function (require, exports, module) { /* wrapped by builder */
-var Backbone = require('Backbone');
-
-var RedditModel = Backbone.Model.extend({
-    defaults: {
-        'foo': 'bar'
-    }
-});
-
-module.exports = RedditModel;
-
-}),
-"RedditView": (function (require, exports, module) { /* wrapped by builder */
-var Backbone = require('Backbone');
-var redditTemplate = require('RedditTemplate');
-
-
-var RedditView = Backbone.View.extend({
-    tagName: 'li',
-    template: _.template(redditTemplate),
-    initialize: function() {
-        this.render();
-    },
-    render: function() {
-        this.$el.html(this.template(this.model.toJSON()));
-        return this;
-    }
-});
-
-module.exports = RedditView;
-
-}),
-"RedditTemplate": "<div>\n    <h3><%=header_title %></h3>\n    <h4><%=description %></h4>\n</div>\n\n",
-"RedditsView": (function (require, exports, module) { /* wrapped by builder */
-var Backbone = require('Backbone'),
-    RedditView = require('RedditView');
-
-var RedditsView = Backbone.View.extend({
-    el: 'section#main',
-    initialize: function() {
-        this.collection.on('add', this.addReddit, this);
-        this.collection.fetch();
-    },
-    addReddit: function(reddit) {
-        var newView = new RedditView({model: reddit});
-        this.$el.append(newView.el);
-    }
-});
-
-module.exports = RedditsView;
-
-
-
-
-
-
-
-
-
-}),
-"RedditsCollection": (function (require, exports, module) { /* wrapped by builder */
-var Backbone = require('Backbone'),
-    RedditModel = require('RedditModel');
-
-var RedditCollection = Backbone.Collection.extend({
-    model: RedditModel,
-    url: 'http://www.reddit.com/r/sex/about.json',
-    parse: function(response) {
-        console.log("8: response = ", response);
-        return response.data;
-    }
-});
-
-module.exports = RedditCollection;
-
 })
-},{},{});
+},{},{"bundle":"_d2fc1bc8"});

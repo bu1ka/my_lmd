@@ -3,10 +3,9 @@ var Backbone = require('Backbone'),
 
 var RedditCollection = Backbone.Collection.extend({
     model: RedditModel,
-    url: 'http://www.reddit.com/r/sex/about.json',
+    url: 'http://www.reddit.com/r/kittens.json',
     parse: function(response) {
-        console.log("8: response = ", response);
-        return response.data;
+        return response.data.children;
     }
 });
 
