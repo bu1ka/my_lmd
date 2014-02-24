@@ -23134,9 +23134,8 @@ var _ = require("lodash"),
 /* added by builder */
 return Backbone;
 }),
-"RedditModel": (function (require) { /* wrapped by builder */
-/* added by builder */
-var Backbone = require("Backbone");
+"RedditModel": (function (require, exports, module) { /* wrapped by builder */
+var Backbone = require('Backbone');
 
 var RedditModel = Backbone.Model.extend({
     defaults: {
@@ -23144,14 +23143,13 @@ var RedditModel = Backbone.Model.extend({
     }
 });
 
+module.exports = RedditModel;
 
-/* added by builder */
-return RedditModel;
 }),
-"RedditView": (function (require) { /* wrapped by builder */
-/* added by builder */
-var Backbone = require("Backbone"),
-    RedditModel = require("RedditModel");
+"RedditView": (function (require, exports, module) { /* wrapped by builder */
+var Backbone = require('Backbone');
+var redditTemplate = require('RedditTemplate');
+
 
 var RedditView = Backbone.View.extend({
     tagName: 'li',
@@ -23165,15 +23163,13 @@ var RedditView = Backbone.View.extend({
     }
 });
 
+module.exports = RedditView;
 
-
-/* added by builder */
-return RedditView;
 }),
-"RedditsView": (function (require) { /* wrapped by builder */
-/* added by builder */
-var Backbone = require("Backbone"),
-    RedditView = require("RedditView");
+"RedditTemplate": "<div>\n    <h3><%=header_title %></h3>\n    <h4><%=description %></h4>\n</div>\n\n",
+"RedditsView": (function (require, exports, module) { /* wrapped by builder */
+var Backbone = require('Backbone'),
+    RedditView = require('RedditView');
 
 var RedditsView = Backbone.View.extend({
     el: 'section#main',
@@ -23182,10 +23178,12 @@ var RedditsView = Backbone.View.extend({
         this.collection.fetch();
     },
     addReddit: function(reddit) {
-        this.$el.append(new RedditView(reddit))
+        var newView = new RedditView({model: reddit});
+        this.$el.append(newView.el);
     }
 });
 
+module.exports = RedditsView;
 
 
 
@@ -23195,24 +23193,21 @@ var RedditsView = Backbone.View.extend({
 
 
 
-
-/* added by builder */
-return RedditsView;
 }),
-"RedditsCollection": (function (require) { /* wrapped by builder */
-/* added by builder */
-var Backbone = require("Backbone"),
-    RedditModel = require("RedditModel");
+"RedditsCollection": (function (require, exports, module) { /* wrapped by builder */
+var Backbone = require('Backbone'),
+    RedditModel = require('RedditModel');
 
 var RedditCollection = Backbone.Collection.extend({
     model: RedditModel,
-    url: 'www.reddit.com/r/sex/about.json'
+    url: 'http://www.reddit.com/r/sex/about.json',
+    parse: function(response) {
+        console.log("8: response = ", response);
+        return response.data;
+    }
 });
 
 module.exports = RedditCollection;
 
-
-/* added by builder */
-return RedditsCollection;
 })
 },{},{});

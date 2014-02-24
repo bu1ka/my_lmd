@@ -1,3 +1,6 @@
+var Backbone = require('Backbone'),
+    RedditView = require('RedditView');
+
 var RedditsView = Backbone.View.extend({
     el: 'section#main',
     initialize: function() {
@@ -5,10 +8,12 @@ var RedditsView = Backbone.View.extend({
         this.collection.fetch();
     },
     addReddit: function(reddit) {
-        this.$el.append(new RedditView(reddit))
+        var newView = new RedditView({model: reddit});
+        this.$el.append(newView.el);
     }
 });
 
+module.exports = RedditsView;
 
 
 

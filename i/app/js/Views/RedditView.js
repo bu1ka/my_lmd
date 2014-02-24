@@ -1,3 +1,7 @@
+var Backbone = require('Backbone');
+var redditTemplate = require('RedditTemplate');
+
+
 var RedditView = Backbone.View.extend({
     tagName: 'li',
     template: _.template(redditTemplate),
@@ -10,3 +14,4 @@ var RedditView = Backbone.View.extend({
     }
 });
 
+module.exports = RedditView;

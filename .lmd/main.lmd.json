@@ -24,39 +24,17 @@
 
             "exports": "Backbone"
         },
-        "RedditModel": {
-            "path": "./i/app/js/Models/RedditModel.js",
-            "exports": "RedditModel",
-            "require": {
-                "Backbone": "Backbone"
-            }
-        },
-        "RedditView" : {
-            "path": "./i/app/js/Views/RedditView.js",
-            "exports": "RedditView",
-            "require": {
-                "Backbone": "Backbone",
-                "RedditModel": "RedditModel"
-            },
-            "template": "./i/app/templates/reddit.html"
-        },
-        "RedditsView" : {
-            "path": "./i/app/js/Views/RedditsView.js",
-            "exports": "RedditsView",
-            "require": {
-                "Backbone": "Backbone",
-                "RedditView": "RedditView"
-            }
-        },
-        "RedditsCollection": {
-            "path": "./i/app/js/Collections/RedditsCollection.js",
-            "exports": "RedditsCollection",
-            "require": {
-                "Backbone": "Backbone",
-                "RedditModel": "RedditModel"
-            }
-        },
+
+        "RedditModel": "./i/app/js/Models/RedditModel.js",
+        "RedditView" : "./i/app/js/Views/RedditView.js",
+        "RedditTemplate": "./i/app/templates/reddit.html",
+        "RedditsView": "./i/app/js/Views/RedditsView.js",
+        "RedditsCollection": "./i/app/js/Collections/RedditsCollection.js",
         "main": "./i/app/js/app.js"
     },
-    "main": "main"
+    "main": "main",
+
+    "log": true,
+    "warn": true
+
 }
